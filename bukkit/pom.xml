@@ -34,7 +34,6 @@
                 <configuration>
                     <artifactSet>
                         <excludes>
-                            <exclude>com.google.code.gson</exclude>
                             <exclude>com.google.guava</exclude>
                         </excludes>
                     </artifactSet>
@@ -75,9 +74,9 @@
 
     <dependencies>
         <dependency>
-            <groupId>org.spigotmc</groupId>
-            <artifactId>spigot-api</artifactId>
-            <version>1.8.8-R0.1-SNAPSHOT</version>
+            <groupId>org.bukkit</groupId>
+            <artifactId>bukkit</artifactId>
+            <version>1.7.9-R0.2</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
