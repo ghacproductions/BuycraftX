@@ -1,10 +1,12 @@
 package net.buycraft.plugin.bukkit.gui;
 
+import com.google.common.collect.ImmutableList;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import net.buycraft.plugin.bukkit.BuycraftPlugin;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
@@ -19,8 +21,9 @@ public class GUIUtil {
     private static BuycraftPlugin plugin;
 
     public static void setPlugin(BuycraftPlugin plugin) {
-        if (GUIUtil.plugin != null)
+        if (GUIUtil.plugin != null) {
             throw new IllegalStateException("Plugin already set");
+        }
         GUIUtil.plugin = Objects.requireNonNull(plugin, "plugin");
     }
 
@@ -31,6 +34,13 @@ public class GUIUtil {
                 player.closeInventory();
             }
         });
+    }
+
+    public static void replaceInventory(Inventory oldInv, Inventory newInv) {
+        // getViewers() is updated as we remove players, so we need to make a copy
+        for (HumanEntity entity : ImmutableList.copyOf(oldInv.getViewers())) {
+            entity.openInventory(newInv);
+        }
     }
 
     public static Inventory getClickedInventory(InventoryClickEvent event) {
