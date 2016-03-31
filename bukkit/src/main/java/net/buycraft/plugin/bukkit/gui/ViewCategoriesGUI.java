@@ -40,17 +40,20 @@ public class ViewCategoriesGUI implements Listener {
     public void update() {
         inventory.clear();
 
+        if (plugin.getApiClient() == null || plugin.getServerInformation() == null) {
+            plugin.getLogger().warning("No secret key available (or no server information), so can't update inventories.");
+            return;
+        }
+
         Listing listing = plugin.getListingUpdateTask().getListing();
         if (listing == null) {
-            plugin.getLogger().warning("No listing found, so can't update categories.");
+            plugin.getLogger().warning("No listing found, so can't update inventories.");
             return;
         }
 
         if (roundNine(listing.getCategories().size()) != inventory.getSize()) {
             Inventory work = Bukkit.createInventory(null, roundNine(listing.getCategories().size()), "Buycraft: Categories");
-            for (HumanEntity entity : ImmutableList.copyOf(inventory.getViewers())) {
-                entity.openInventory(work);
-            }
+            GUIUtil.replaceInventory(inventory, work);
             inventory = work;
         }
 

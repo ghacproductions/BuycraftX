@@ -8,5 +8,11 @@ BuycraftX is an entirely new plugin for use with the [Buycraft.net service](http
 * Supports multiple platforms:
   * Spigot 1.8 or above
   * BungeeCord (recent versions)
-  * Sponge (coming soon!)
+  * Sponge 3.x
 * Custom item IDs are not supported, as it is not portable to other platforms and is deprecated.
+
+## Standalone executor
+
+BuycraftX can be integrated into your own custom applications to handle command execution. Most applications will
+find `StandaloneBuycraftRunnerBuilder` to be the easiest method for integration, but you can also implement the whole
+BuycraftX stack if desired.

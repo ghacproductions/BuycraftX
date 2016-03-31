@@ -40,19 +40,22 @@ public class CategoryViewGUI {
     }
 
     public void update() {
+        if (plugin.getApiClient() == null || plugin.getServerInformation() == null) {
+            plugin.getLogger().warning("No secret key available (or no server information), so can't update inventories.");
+            return;
+        }
+
         Listing listing = plugin.getListingUpdateTask().getListing();
         if (listing == null) {
-            plugin.getLogger().warning("No listing found, so can't update categories.");
+            plugin.getLogger().warning("No listing found, so can't update inventories.");
             return;
         }
 
         List<Integer> foundIds = new ArrayList<>();
         for (Category category : listing.getCategories()) {
             foundIds.add(category.getId());
-            if (category.getSubcategories() != null) {
-                for (Category category1 : category.getSubcategories()) {
-                    foundIds.add(category1.getId());
-                }
+            for (Category category1 : category.getSubcategories()) {
+                foundIds.add(category1.getId());
             }
         }
 
@@ -60,8 +63,7 @@ public class CategoryViewGUI {
         prune.keySet().removeAll(foundIds);
         for (List<GUIImpl> guis : prune.values()) {
             for (GUIImpl gui : guis) {
-                gui.closeAll();
-                HandlerList.unregisterAll(gui);
+                gui.destroy();
             }
         }
         categoryMenus.keySet().retainAll(foundIds);
@@ -87,8 +89,7 @@ public class CategoryViewGUI {
             if (toRemove > 0) {
                 List<GUIImpl> prune = pages.subList(pages.size() - toRemove, pages.size());
                 for (GUIImpl gui : prune) {
-                    gui.closeAll();
-                    HandlerList.unregisterAll(gui);
+                    gui.destroy();
                 }
                 prune.clear();
             } else if (toRemove < 0) {
@@ -108,25 +109,20 @@ public class CategoryViewGUI {
                     Bukkit.getPluginManager().registerEvents(tmpGui, plugin);
                     pages.set(i, tmpGui);
 
-                    for (HumanEntity entity : ImmutableList.copyOf(gui.inventory.getViewers())) {
-                        entity.openInventory(tmpGui.inventory);
-                    }
+                    GUIUtil.replaceInventory(gui.inventory, tmpGui.inventory);
                 } else {
                     gui.update(category);
                 }
             }
         }
 
-        if (category.getSubcategories() != null) {
-            for (Category category1 : category.getSubcategories()) {
-                doUpdate(category, category1);
-            }
+        for (Category category1 : category.getSubcategories()) {
+            doUpdate(category, category1);
         }
     }
 
     private static int calculatePages(Category category) {
-        int pagesWithSubcats = category.getSubcategories() == null ? 0 :
-                (int) Math.ceil(category.getSubcategories().size() / 9D);
+        int pagesWithSubcats = (int) Math.ceil(category.getSubcategories().size() / 9D);
         int pagesWithPackages = (int) Math.ceil(category.getPackages().size() / 36D);
         return Math.max(pagesWithSubcats, pagesWithPackages);
     }
@@ -140,7 +136,7 @@ public class CategoryViewGUI {
         private int calculateSize(Category category, int page) {
             // TODO: Calculate this amount based on no of packages
             int needed = 45; // bottom row
-            if (category.getSubcategories() != null && !category.getSubcategories().isEmpty()) {
+            if (!category.getSubcategories().isEmpty()) {
                 int pagesWithSubcats = (int) Math.ceil(category.getSubcategories().size() / 9D);
                 if (pagesWithSubcats >= page) {
                     // more pages exist
@@ -154,6 +150,11 @@ public class CategoryViewGUI {
 
         public boolean requiresResize(Category category) {
             return calculateSize(category, page) != inventory.getSize();
+        }
+
+        public void destroy() {
+            HandlerList.unregisterAll(this);
+            closeAll();
         }
 
         private String trimName(String name) {
@@ -185,7 +186,7 @@ public class CategoryViewGUI {
             inventory.clear();
 
             List<List<Category>> subcatPartition;
-            if (category.getSubcategories() != null && !category.getSubcategories().isEmpty()) {
+            if (!category.getSubcategories().isEmpty()) {
                 subcatPartition = Lists.partition(category.getSubcategories(), 9);
                 if (subcatPartition.size() - 1 >= page) {
                     List<Category> subcats = subcatPartition.get(page);

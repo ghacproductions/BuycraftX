@@ -1,8 +1,6 @@
 package net.buycraft.plugin.bukkit;
 
 import com.bugsnag.Client;
-import com.google.gson.Gson;
-import io.keen.client.java.*;
 import lombok.Getter;
 import lombok.Setter;
 import net.buycraft.plugin.IBuycraftPlatform;
@@ -19,7 +17,8 @@ import net.buycraft.plugin.bukkit.signs.purchases.RecentPurchaseSignListener;
 import net.buycraft.plugin.bukkit.signs.purchases.RecentPurchaseSignStorage;
 import net.buycraft.plugin.bukkit.tasks.ListingUpdateTask;
 import net.buycraft.plugin.bukkit.tasks.SignUpdater;
-import net.buycraft.plugin.bukkit.util.KeenUtils;
+import net.buycraft.plugin.bukkit.util.AnalyticsUtil;
+import net.buycraft.plugin.bukkit.util.VersionCheck;
 import net.buycraft.plugin.client.ApiClient;
 import net.buycraft.plugin.client.ApiException;
 import net.buycraft.plugin.client.ProductionApiClient;
@@ -31,14 +30,17 @@ import net.buycraft.plugin.execution.placeholder.PlaceholderManager;
 import net.buycraft.plugin.execution.placeholder.UuidPlaceholder;
 import net.buycraft.plugin.execution.strategy.CommandExecutor;
 import net.buycraft.plugin.execution.strategy.QueuedCommandExecutor;
+import okhttp3.Cache;
 import okhttp3.OkHttpClient;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
 import java.nio.file.Path;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
@@ -61,8 +63,6 @@ public class BuycraftPlugin extends JavaPlugin {
     private CategoryViewGUI categoryViewGUI;
     @Getter
     private ViewCategoriesGUI viewCategoriesGUI;
-    @Getter
-    private KeenClient keenClient;
     @Getter
     private RecentPurchaseSignStorage recentPurchaseSignStorage;
     @Getter
@@ -101,9 +101,10 @@ public class BuycraftPlugin extends JavaPlugin {
 
         // Initialize API client.
         httpClient = new OkHttpClient.Builder()
-                .connectTimeout(500, TimeUnit.MILLISECONDS)
-                .writeTimeout(1, TimeUnit.SECONDS)
+                .connectTimeout(1, TimeUnit.SECONDS)
+                .writeTimeout(3, TimeUnit.SECONDS)
                 .readTimeout(3, TimeUnit.SECONDS)
+                .cache(new Cache(new File(getDataFolder(), "cache"), 1024 * 1024 * 10))
                 .build();
         String serverKey = configuration.getServerKey();
         if (serverKey == null || serverKey.equals("INVALID")) {
@@ -119,19 +120,39 @@ public class BuycraftPlugin extends JavaPlugin {
             apiClient = client;
         }
 
+        // Check for latest version.
+        VersionCheck check = new VersionCheck(this, getDescription().getVersion());
+        try {
+            check.verify();
+        } catch (IOException e) {
+            getLogger().log(Level.SEVERE, "Can't check for updates", e);
+        }
+        getServer().getPluginManager().registerEvents(check, this); // out!
+
         // Initialize placeholders.
         placeholderManager.addPlaceholder(new NamePlaceholder());
         placeholderManager.addPlaceholder(new UuidPlaceholder());
 
-        // Queueing tasks.
-        getServer().getScheduler().runTaskLaterAsynchronously(this, duePlayerFetcher = new DuePlayerFetcher(platform), 20);
+        // Start the essential tasks.
+        getServer().getScheduler().runTaskLaterAsynchronously(this, duePlayerFetcher = new DuePlayerFetcher(platform,
+                configuration.isVerbose()), 20);
         commandExecutor = new QueuedCommandExecutor(platform);
         getServer().getScheduler().runTaskTimer(this, (Runnable) commandExecutor, 1, 1);
+
+        // Initialize the GUIs.
+        viewCategoriesGUI = new ViewCategoriesGUI(this);
+        categoryViewGUI = new CategoryViewGUI(this);
+
+        // Update listing.
         listingUpdateTask = new ListingUpdateTask(this);
         if (apiClient != null) {
             getLogger().info("Fetching all server packages...");
             listingUpdateTask.run(); // for a first synchronous run
             getServer().getScheduler().runTaskTimerAsynchronously(this, listingUpdateTask, 20 * 60 * 10, 20 * 60 * 10);
+
+            // Update GUIs too.
+            viewCategoriesGUI.update();
+            categoryViewGUI.update();
         }
 
         // Register listener.
@@ -146,13 +167,6 @@ public class BuycraftPlugin extends JavaPlugin {
         command.getSubcommandMap().put("signupdate", new SignUpdateSubcommand(this));
         command.getSubcommandMap().put("report", new ReportCommand(this));
         getCommand("buycraft").setExecutor(command);
-
-        // Initialize GUIs.
-        viewCategoriesGUI = new ViewCategoriesGUI(this);
-        viewCategoriesGUI.update();
-
-        categoryViewGUI = new CategoryViewGUI(this);
-        categoryViewGUI.update();
 
         // Initialize sign data and listener.
         recentPurchaseSignStorage = new RecentPurchaseSignStorage();
@@ -176,40 +190,17 @@ public class BuycraftPlugin extends JavaPlugin {
 
         // Send data to Keen IO
         if (serverInformation != null) {
-            keenClient = new KeenClient.Builder() {
-                @Override
-                protected KeenJsonHandler getDefaultJsonHandler() throws Exception {
-                    return new KeenJsonHandler() {
-                        private final Gson gson = new Gson();
-
-                        @Override
-                        public Map<String, Object> readJson(Reader reader) throws IOException {
-                            return gson.fromJson(reader, Map.class);
-                        }
-
-                        @Override
-                        public void writeJson(Writer writer, Map<String, ?> map) throws IOException {
-                            gson.toJson(map, writer);
-                            writer.close();
-                        }
-                    };
-                }
-            }.build();
-            KeenProject project = new KeenProject(serverInformation.getAnalytics().getInternal().getProject(),
-                    serverInformation.getAnalytics().getInternal().getKey(),
-                    null);
-            keenClient.setDefaultProject(project);
-
             getServer().getScheduler().runTaskTimerAsynchronously(this, new Runnable() {
                 @Override
                 public void run() {
-                    KeenUtils.postServerInformation(BuycraftPlugin.this);
+                    AnalyticsUtil.postServerInformation(BuycraftPlugin.this);
                 }
             }, 0, 20 * TimeUnit.DAYS.toSeconds(1));
         }
 
         // Set up Bugsnag.
         Client bugsnagClient = new Client("cac4ea0fdbe89b5004d8ab8d5409e594", false);
+        bugsnagClient.setAppVersion(getDescription().getVersion());
         bugsnagClient.setLogger(new BugsnagNilLogger());
         Bukkit.getLogger().addHandler(new BugsnagGlobalLoggingHandler(bugsnagClient, this));
         getLogger().addHandler(new BugsnagLoggingHandler(bugsnagClient, this));
@@ -226,11 +217,6 @@ public class BuycraftPlugin extends JavaPlugin {
             buyNowSignStorage.save(getDataFolder().toPath().resolve("buy_now_signs.json"));
         } catch (IOException e) {
             getLogger().log(Level.WARNING, "Can't save buy now signs, continuing anyway", e);
-        }
-        try {
-            saveConfiguration();
-        } catch (IOException e) {
-            getLogger().log(Level.WARNING, "Can't save configuration", e);
         }
     }
 
