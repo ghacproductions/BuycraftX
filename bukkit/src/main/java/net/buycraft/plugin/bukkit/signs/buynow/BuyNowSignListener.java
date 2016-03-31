@@ -103,7 +103,7 @@ public class BuyNowSignListener implements Listener {
                     if ((event.getPlayer().getOpenInventory().getTopInventory() == null ||
                             !event.getPlayer().getOpenInventory().getTopInventory().getTitle().startsWith("Buycraft: ")) &&
                             settingUpSigns.remove(event.getPlayer().getUniqueId()) != null) {
-                        event.getPlayer().sendMessage(ChatColor.RED + "Buy sign set up cancelled.");
+                        // event.getPlayer().sendMessage(ChatColor.RED + "Buy sign set up cancelled.");
                     }
                 }
             }, 3);
