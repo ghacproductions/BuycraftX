@@ -10,12 +10,14 @@ import net.buycraft.plugin.execution.strategy.ToRunQueuedCommand;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 
 @RequiredArgsConstructor
 public class ImmediateExecutionRunner implements Runnable {
     private final IBuycraftPlatform platform;
-    private final Set<Integer> executingLater = Sets.newConcurrentHashSet();
+    @SuppressWarnings("deprecation")
+	private final Set<Integer> executingLater = Sets.newSetFromMap(new ConcurrentHashMap<Integer, Boolean>());
     private final Random random = new Random();
 
     @Override
