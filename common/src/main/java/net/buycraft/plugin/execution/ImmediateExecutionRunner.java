@@ -17,7 +17,7 @@ import java.util.logging.Level;
 public class ImmediateExecutionRunner implements Runnable {
     private final IBuycraftPlatform platform;
     @SuppressWarnings("deprecation")
-	private final Set<Integer> executingLater = Sets.newSetFromMap(new ConcurrentHashMap<Integer, Boolean>());
+    private final Set<Integer> executingLater = Sets.newSetFromMap(new ConcurrentHashMap<Integer, Boolean>());
     private final Random random = new Random();
 
     @Override
