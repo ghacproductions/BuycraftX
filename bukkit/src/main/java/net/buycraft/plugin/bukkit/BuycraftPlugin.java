@@ -23,6 +23,7 @@ import net.buycraft.plugin.client.ApiClient;
 import net.buycraft.plugin.client.ApiException;
 import net.buycraft.plugin.client.ProductionApiClient;
 import net.buycraft.plugin.config.BuycraftConfiguration;
+import net.buycraft.plugin.config.BuycraftI18n;
 import net.buycraft.plugin.data.responses.ServerInformation;
 import net.buycraft.plugin.execution.DuePlayerFetcher;
 import net.buycraft.plugin.execution.placeholder.NamePlaceholder;
@@ -30,6 +31,7 @@ import net.buycraft.plugin.execution.placeholder.PlaceholderManager;
 import net.buycraft.plugin.execution.placeholder.UuidPlaceholder;
 import net.buycraft.plugin.execution.strategy.CommandExecutor;
 import net.buycraft.plugin.execution.strategy.QueuedCommandExecutor;
+import net.buycraft.plugin.util.Ipv4PreferDns;
 import okhttp3.Cache;
 import okhttp3.OkHttpClient;
 import org.bukkit.Bukkit;
@@ -75,6 +77,8 @@ public class BuycraftPlugin extends JavaPlugin {
     private IBuycraftPlatform platform;
     @Getter
     private CommandExecutor commandExecutor;
+    @Getter
+    private BuycraftI18n i18n;
 
     @Override
     public void onEnable() {
@@ -99,12 +103,15 @@ public class BuycraftPlugin extends JavaPlugin {
             return;
         }
 
+        i18n = configuration.createI18n();
+
         // Initialize API client.
         httpClient = new OkHttpClient.Builder()
                 .connectTimeout(1, TimeUnit.SECONDS)
                 .writeTimeout(3, TimeUnit.SECONDS)
                 .readTimeout(3, TimeUnit.SECONDS)
                 .cache(new Cache(new File(getDataFolder(), "cache"), 1024 * 1024 * 10))
+                .dns(new Ipv4PreferDns())
                 .build();
         String serverKey = configuration.getServerKey();
         if (serverKey == null || serverKey.equals("INVALID")) {
@@ -159,7 +166,7 @@ public class BuycraftPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new BuycraftListener(this), this);
 
         // Initialize and register commands.
-        BuycraftCommand command = new BuycraftCommand();
+        BuycraftCommand command = new BuycraftCommand(this);
         command.getSubcommandMap().put("forcecheck", new ForceCheckSubcommand(this));
         command.getSubcommandMap().put("secret", new SecretSubcommand(this));
         command.getSubcommandMap().put("info", new InformationSubcommand(this));
@@ -173,7 +180,7 @@ public class BuycraftPlugin extends JavaPlugin {
         try {
             recentPurchaseSignStorage.load(getDataFolder().toPath().resolve("purchase_signs.json"));
         } catch (IOException e) {
-            getLogger().log(Level.WARNING, "Can't load purchase igns, continuing anyway", e);
+            getLogger().log(Level.WARNING, "Can't load purchase signs, continuing anyway");
         }
         getServer().getScheduler().runTaskTimerAsynchronously(this, new SignUpdater(this), 20, 3600 * 15);
         getServer().getPluginManager().registerEvents(new RecentPurchaseSignListener(this), this);
@@ -183,7 +190,7 @@ public class BuycraftPlugin extends JavaPlugin {
         try {
             buyNowSignStorage.load(getDataFolder().toPath().resolve("buy_now_signs.json"));
         } catch (IOException e) {
-            getLogger().log(Level.WARNING, "Can't load buy now signs, continuing anyway", e);
+            getLogger().log(Level.WARNING, "Can't load buy now signs, continuing anyway");
         }
         buyNowSignListener = new BuyNowSignListener(this);
         getServer().getPluginManager().registerEvents(buyNowSignListener, this);
@@ -198,7 +205,6 @@ public class BuycraftPlugin extends JavaPlugin {
             }, 0, 20 * TimeUnit.DAYS.toSeconds(1));
         }
 
-        // Set up Bugsnag.
         Client bugsnagClient = new Client("cac4ea0fdbe89b5004d8ab8d5409e594", false);
         bugsnagClient.setAppVersion(getDescription().getVersion());
         bugsnagClient.setLogger(new BugsnagNilLogger());

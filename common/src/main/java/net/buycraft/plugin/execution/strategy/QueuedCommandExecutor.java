@@ -54,9 +54,8 @@ public class QueuedCommandExecutor implements CommandExecutor, Runnable {
                 }
 
                 it.remove();
+                run++;
             }
-
-            run++;
         }
 
         long fullTime = System.nanoTime() - start;
@@ -66,10 +65,10 @@ public class QueuedCommandExecutor implements CommandExecutor, Runnable {
             BigDecimal timeMs = new BigDecimal(fullTime).divide(new BigDecimal("1000000"), 2, BigDecimal.ROUND_CEILING);
             if (blocking) {
                 platform.log(Level.SEVERE, "Command execution took " + timeMs.toPlainString() + "ms to complete. " +
-                        "This indicates an issue with one of your server's plugins, which can cause lag.");
+                        "This likely indicates an issue with one of your server's plugins, which can cause lag.");
             } else {
                 platform.log(Level.SEVERE, "Command execution took " + timeMs.toPlainString() + "ms to complete. " +
-                        "This indicates an issue with one of your server's plugins, which will slow command execution.");
+                        "This likely indicates an issue with one of your server's plugins, which will slow command execution.");
             }
         }
 

@@ -2,7 +2,7 @@ package net.buycraft.plugin.bukkit;
 
 import lombok.RequiredArgsConstructor;
 import net.buycraft.plugin.data.QueuedPlayer;
-import net.buycraft.plugin.execution.PlayerLoginExecution;
+import net.buycraft.plugin.execution.PlayerCommandExecutor;
 import org.apache.commons.lang.StringUtils;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -23,17 +23,20 @@ public class BuycraftListener implements Listener {
         QueuedPlayer qp = plugin.getDuePlayerFetcher().fetchAndRemoveDuePlayer(event.getPlayer().getName());
         if (qp != null) {
             plugin.getLogger().info(String.format("Executing login commands for %s...", event.getPlayer().getName()));
-            plugin.getServer().getScheduler().runTaskAsynchronously(plugin, new PlayerLoginExecution(qp, plugin.getPlatform()));
+            plugin.getServer().getScheduler().runTaskAsynchronously(plugin, new PlayerCommandExecutor(qp, plugin.getPlatform()));
         }
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
     public void onPlayerCommandPreprocess(PlayerCommandPreprocessEvent event) {
         if (!plugin.getConfiguration().isDisableBuyCommand()) {
-            if (StringUtils.equalsIgnoreCase(event.getMessage().substring(1), plugin.getConfiguration().getBuyCommandName())/* ||
-                    StringUtils.startsWithIgnoreCase(event.getMessage().substring(1), plugin.getConfiguration().getBuyCommandName() + " ")*/) {
-                plugin.getViewCategoriesGUI().open(event.getPlayer());
-                event.setCancelled(true);
+
+            for (String s : plugin.getConfiguration().getBuyCommandName()) {
+                if (StringUtils.equalsIgnoreCase(event.getMessage().substring(1), s)/* ||
+                        StringUtils.startsWithIgnoreCase(event.getMessage().substring(1), s + " ")*/) {
+                    plugin.getViewCategoriesGUI().open(event.getPlayer());
+                    event.setCancelled(true);
+                }
             }
         }
     }
