@@ -157,13 +157,6 @@ public class CategoryViewGUI {
             closeAll();
         }
 
-        private String trimName(String name) {
-            if (name.length() <= 32)
-                return name;
-
-            return name.substring(0, 29) + "...";
-        }
-
         public void closeAll() {
             for (HumanEntity entity : ImmutableList.copyOf(inventory.getViewers())) {
                 entity.closeInventory();
@@ -175,7 +168,7 @@ public class CategoryViewGUI {
         }
 
         public GUIImpl(Integer parentId, int page, Category category) {
-            this.inventory = Bukkit.createInventory(null, calculateSize(category, page), trimName("Buycraft: " + category.getName()));
+            this.inventory = Bukkit.createInventory(null, calculateSize(category, page), GUIUtil.trimName("Buycraft: " + category.getName()));
             this.parentId = parentId;
             this.page = page;
             update(category);
@@ -216,15 +209,16 @@ public class CategoryViewGUI {
                     NumberFormat format = NumberFormat.getCurrencyInstance(Locale.US);
                     format.setCurrency(Currency.getInstance(plugin.getServerInformation().getAccount().getCurrency().getIso4217()));
 
-                    String price = String.valueOf(ChatColor.GRAY) +
-                            "Price: " +
+                    String price = ChatColor.GRAY +
+                            plugin.getI18n().get("price") +
+                            ": " +
                             ChatColor.DARK_GREEN +
                             ChatColor.BOLD +
                             format.format(p.getEffectivePrice());
                     lore.add(price);
 
                     if (p.getSale() != null && p.getSale().isActive()) {
-                        lore.add(ChatColor.RED + "(-" + format.format(p.getSale().getDiscount()) + " off!)");
+                        lore.add(ChatColor.RED + plugin.getI18n().get("amount_off", format.format(p.getSale().getDiscount())));
                     }
 
                     meta.setLore(lore);
@@ -238,18 +232,18 @@ public class CategoryViewGUI {
             int bottomBase = base + 36;
             if (page > 0) {
                 // Definitely draw a previous button
-                inventory.setItem(bottomBase + 1, withName(Material.NETHER_STAR, ChatColor.AQUA + "Previous Page"));
+                inventory.setItem(bottomBase + 1, withName(Material.NETHER_STAR, ChatColor.AQUA + plugin.getI18n().get("previous_page")));
             }
 
             if (subcatPartition.size() - 1 > page || packagePartition.size() - 1 > page) {
                 // Definitely draw a next button
-                inventory.setItem(bottomBase + 7, withName(Material.NETHER_STAR, ChatColor.AQUA + "Next Page"));
+                inventory.setItem(bottomBase + 7, withName(Material.NETHER_STAR, ChatColor.AQUA + plugin.getI18n().get("next_page")));
             }
 
             // Draw a parent or "view all categories" button
             ItemStack parent = new ItemStack(Material.BOOK_AND_QUILL);
             ItemMeta meta = parent.getItemMeta();
-            meta.setDisplayName(ChatColor.GRAY + (parentId == null ? "View All Categories" : "Back to Parent"));
+            meta.setDisplayName(ChatColor.GRAY + (parentId == null ? plugin.getI18n().get("view_all_categories") : plugin.getI18n().get("back_to_parent")));
             parent.setItemMeta(meta);
             inventory.setItem(bottomBase + 4, parent);
         }
@@ -281,7 +275,7 @@ public class CategoryViewGUI {
                         if (category1.getName().equals(ChatColor.stripColor(displayName))) {
                             final GUIImpl gui = getFirstPage(category1);
                             if (gui == null) {
-                                player.sendMessage(ChatColor.RED + "There's nothing here!");
+                                player.sendMessage(ChatColor.RED + plugin.getI18n().get("nothing_in_category"));
                                 return;
                             }
                             Bukkit.getScheduler().runTask(plugin, new Runnable() {
@@ -306,14 +300,14 @@ public class CategoryViewGUI {
                             return;
                         }
                     }
-                } else if (displayName.equals(ChatColor.AQUA + "Previous Page")) {
+                } else if (displayName.equals(ChatColor.AQUA + plugin.getI18n().get("previous_page"))) {
                     Bukkit.getScheduler().runTask(plugin, new Runnable() {
                         @Override
                         public void run() {
                             categoryMenus.get(category.getId()).get(page - 1).open(player);
                         }
                     });
-                } else if (displayName.equals(ChatColor.AQUA + "Next Page")) {
+                } else if (displayName.equals(ChatColor.AQUA + plugin.getI18n().get("next_page"))) {
                     Bukkit.getScheduler().runTask(plugin, new Runnable() {
                         @Override
                         public void run() {

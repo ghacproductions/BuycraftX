@@ -7,13 +7,22 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.Properties;
+import java.util.*;
 
 public class BuycraftConfiguration {
     private final Properties properties;
 
     public BuycraftConfiguration() {
         this.properties = new Properties();
+    }
+
+    private static String join(String separator, Collection<String> elements) {
+        StringBuilder builder = new StringBuilder();
+        for (String element : elements) {
+            builder.append(element).append(separator);
+        }
+        builder.delete(builder.length() - separator.length(), builder.length());
+        return builder.toString();
     }
 
     private void defaultSet(String key, String value) {
@@ -42,12 +51,12 @@ public class BuycraftConfiguration {
         return properties.getProperty("server-key", null);
     }
 
-    public void setBuyCommandName(String key) {
-        properties.setProperty("buy-command-name", key);
+    public void setBuyCommandName(List<String> keys) {
+        properties.setProperty("buy-command-name", join(",", keys));
     }
 
-    public String getBuyCommandName() {
-        return properties.getProperty("buy-command-name", "buy");
+    public List<String> getBuyCommandName() {
+        return Arrays.asList(properties.getProperty("buy-command-name", "buy").split(","));
     }
 
     public void setVerbose(boolean verbose) {
@@ -77,12 +86,21 @@ public class BuycraftConfiguration {
         return getBoolean("disable-buy-command", false);
     }
 
+    private Locale getLocale() {
+        return new Locale(properties.getProperty("language", "en"));
+    }
+
+    public BuycraftI18n createI18n() {
+        return new BuycraftI18n(getLocale());
+    }
+
     public void fillDefaults() {
         defaultSet("server-key", "INVALID");
         defaultSet("is-bungeecord", "false");
         defaultSet("check-for-updates", "true");
         defaultSet("disable-buy-command", "false");
         defaultSet("buy-command-name", "buy");
+        defaultSet("language", Locale.getDefault().getLanguage());
         defaultSet("verbose", "true");
     }
 }

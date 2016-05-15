@@ -1,6 +1,5 @@
 package net.buycraft.plugin.execution;
 
-import com.google.common.collect.Sets;
 import lombok.RequiredArgsConstructor;
 import net.buycraft.plugin.IBuycraftPlatform;
 import net.buycraft.plugin.client.ApiException;
@@ -14,10 +13,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 
 @RequiredArgsConstructor
-public class ImmediateExecutionRunner implements Runnable {
+public class ImmediateCommandExecutor implements Runnable {
     private final IBuycraftPlatform platform;
-    @SuppressWarnings("deprecation")
-    private final Set<Integer> executingLater = Sets.newSetFromMap(new ConcurrentHashMap<Integer, Boolean>());
     private final Random random = new Random();
 
     @Override
@@ -30,17 +27,11 @@ public class ImmediateExecutionRunner implements Runnable {
 
         do {
             try {
+                // Retrieve offline command queue.
                 information = platform.getApiClient().retrieveOfflineQueue();
             } catch (IOException | ApiException e) {
                 platform.log(Level.SEVERE, "Could not fetch command queue", e);
                 return;
-            }
-
-            // Filter out commands we're going to execute at a later time.
-            for (Iterator<QueuedCommand> it = information.getCommands().iterator(); it.hasNext(); ) {
-                QueuedCommand command = it.next();
-                if (executingLater.contains(command.getId()))
-                    it.remove();
             }
 
             // Nothing to do? Then let's exit.

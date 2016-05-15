@@ -12,7 +12,7 @@ import java.io.IOException;
 import java.util.logging.Level;
 
 @RequiredArgsConstructor
-public class PlayerLoginExecution implements Runnable {
+public class PlayerCommandExecutor implements Runnable {
     private final QueuedPlayer player;
     private final IBuycraftPlatform platform;
 
@@ -29,7 +29,6 @@ public class PlayerLoginExecution implements Runnable {
 
         platform.log(Level.INFO, String.format("Fetched %d commands for player '%s'.", information.getCommands().size(), player.getName()));
 
-        // Perform the actual command execution.
         // Queue commands for later.
         for (QueuedCommand command : information.getCommands()) {
             platform.getExecutor().queue(new ToRunQueuedCommand(player, command, true));

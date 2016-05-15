@@ -14,6 +14,7 @@ import net.buycraft.plugin.client.ApiClient;
 import net.buycraft.plugin.client.ApiException;
 import net.buycraft.plugin.client.ProductionApiClient;
 import net.buycraft.plugin.config.BuycraftConfiguration;
+import net.buycraft.plugin.config.BuycraftI18n;
 import net.buycraft.plugin.data.responses.ServerInformation;
 import net.buycraft.plugin.data.responses.Version;
 import net.buycraft.plugin.execution.DuePlayerFetcher;
@@ -22,6 +23,7 @@ import net.buycraft.plugin.execution.placeholder.PlaceholderManager;
 import net.buycraft.plugin.execution.placeholder.UuidPlaceholder;
 import net.buycraft.plugin.execution.strategy.CommandExecutor;
 import net.buycraft.plugin.execution.strategy.QueuedCommandExecutor;
+import net.buycraft.plugin.util.Ipv4PreferDns;
 import net.buycraft.plugin.util.VersionUtil;
 import net.md_5.bungee.api.plugin.Plugin;
 import okhttp3.Cache;
@@ -58,6 +60,8 @@ public class BuycraftPlugin extends Plugin {
     private IBuycraftPlatform platform;
     @Getter
     private CommandExecutor commandExecutor;
+    @Getter
+    private BuycraftI18n i18n;
 
     @Override
     public void onEnable() {
@@ -78,6 +82,8 @@ public class BuycraftPlugin extends Plugin {
         } catch (IOException e) {
             throw new RuntimeException("Unable to load configuration!", e);
         }
+
+        i18n = configuration.createI18n();
 
         // Initialize API client.
         // This has to be done partially async due to the SecurityManager.
@@ -101,6 +107,7 @@ public class BuycraftPlugin extends Plugin {
                 .readTimeout(3, TimeUnit.SECONDS)
                 .dispatcher(new Dispatcher(getExecutorService()))
                 .cache(cache)
+                .dns(new Ipv4PreferDns())
                 .build();
         String serverKey = configuration.getServerKey();
         if (serverKey == null || serverKey.equals("INVALID")) {
@@ -147,7 +154,7 @@ public class BuycraftPlugin extends Plugin {
         getProxy().getPluginManager().registerListener(this, new BuycraftListener(this));
 
         // Initialize and register commands.
-        BuycraftCommand command = new BuycraftCommand();
+        BuycraftCommand command = new BuycraftCommand(this);
         command.getSubcommandMap().put("forcecheck", new ForceCheckSubcommand(this));
         command.getSubcommandMap().put("secret", new SecretSubcommand(this));
         command.getSubcommandMap().put("info", new InformationSubcommand(this));
