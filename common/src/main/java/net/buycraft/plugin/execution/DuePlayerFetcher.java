@@ -21,13 +21,17 @@ public class DuePlayerFetcher implements Runnable {
     private final IBuycraftPlatform platform;
     private final Map<String, QueuedPlayer> due = new HashMap<>();
     private final Lock lock = new ReentrantLock();
-    @Getter
     private final AtomicBoolean inProgress = new AtomicBoolean(false);
     private final boolean verbose;
     private final Random random = new Random();
 
     private static final int MAXIMUM_PER_PAGE = 250;
     private static final int FALLBACK_CHECK_BACK_SECS = 300;
+    private static final int MAXIMUM_ONLINE_PLAYERS_TO_EXECUTE = 15;
+
+    public boolean inProgress() {
+        return inProgress.get();
+    }
 
     @Override
     public void run() {
@@ -113,8 +117,10 @@ public class DuePlayerFetcher implements Runnable {
         for (Iterator<QueuedPlayer> it = due.values().iterator(); it.hasNext(); ) {
             QueuedPlayer qp = it.next();
             if (platform.isPlayerOnline(qp)) {
-                processNow.add(qp);
-                it.remove();
+                if (processNow.size() < MAXIMUM_ONLINE_PLAYERS_TO_EXECUTE) {
+                    processNow.add(qp);
+                    it.remove();
+                }
             }
         }
 
@@ -122,9 +128,7 @@ public class DuePlayerFetcher implements Runnable {
             platform.log(Level.INFO, String.format("Executing commands for %d online players...", processNow.size()));
             for (int i = 0; i < processNow.size(); i++) {
                 QueuedPlayer qp = processNow.get(i);
-                // 500ms delay between each player to spread server load for many online players, up to a
-                // maximum of 5 seconds
-                platform.executeAsyncLater(new PlayerCommandExecutor(qp, platform), Math.min(5000, i * 500), TimeUnit.MILLISECONDS);
+                platform.executeAsyncLater(new PlayerCommandExecutor(qp, platform), i + 1, TimeUnit.SECONDS);
             }
         }
     }
