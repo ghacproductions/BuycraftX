@@ -128,13 +128,15 @@ public class BuycraftPlugin extends JavaPlugin {
         }
 
         // Check for latest version.
-        VersionCheck check = new VersionCheck(this, getDescription().getVersion());
-        try {
-            check.verify();
-        } catch (IOException e) {
-            getLogger().log(Level.SEVERE, "Can't check for updates", e);
+        if (configuration.isCheckForUpdates()) {
+            VersionCheck check = new VersionCheck(this, getDescription().getVersion());
+            try {
+                check.verify();
+            } catch (IOException e) {
+                getLogger().log(Level.SEVERE, "Can't check for updates", e);
+            }
+            getServer().getPluginManager().registerEvents(check, this); // out!
         }
-        getServer().getPluginManager().registerEvents(check, this); // out!
 
         // Initialize placeholders.
         placeholderManager.addPlaceholder(new NamePlaceholder());
@@ -154,12 +156,16 @@ public class BuycraftPlugin extends JavaPlugin {
         listingUpdateTask = new ListingUpdateTask(this);
         if (apiClient != null) {
             getLogger().info("Fetching all server packages...");
-            listingUpdateTask.run(); // for a first synchronous run
-            getServer().getScheduler().runTaskTimerAsynchronously(this, listingUpdateTask, 20 * 60 * 10, 20 * 60 * 10);
+            try {
+                listingUpdateTask.run(); // for a first synchronous run
 
-            // Update GUIs too.
-            viewCategoriesGUI.update();
-            categoryViewGUI.update();
+                // Update GUIs too.
+                viewCategoriesGUI.update();
+                categoryViewGUI.update();
+            } catch (Exception e) {
+                getLogger().log(Level.SEVERE, "Unable to fetch server packages", e);
+            }
+            getServer().getScheduler().runTaskTimerAsynchronously(this, listingUpdateTask, 20 * 60 * 10, 20 * 60 * 10);
         }
 
         // Register listener.
